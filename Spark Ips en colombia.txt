@@ -1,0 +1,65 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, count, desc
+
+def main():
+    spark = SparkSession.builder \
+        .appName("AnalisisBatchIPS") \
+        .getOrCreate()
+    
+    spark.sparkContext.setLogLevel("WARN")
+    print("--- Sesión de Spark Creada ---")
+
+    nombre_archivo = "Listado_de_IPS_en_Colombia_según_su_nivel_de_complejidad_20251028.csv"
+
+    # -----------------------------------------------------------------
+    # TAREA 1: Cargar el conjunto de datos
+    # -----------------------------------------------------------------
+    try:
+        df = spark.read.csv(
+            nombre_archivo,
+            header=True,
+            inferSchema=False,  # Lo mantenemos en False (seguro)
+            sep=","
+        )
+        
+        print(f"--- Archivo '{nombre_archivo}' cargado ---")
+
+    except Exception as e:
+        print(f"Error al cargar el CSV '{nombre_archivo}'.")
+        print(e)
+        return
+
+    # -----------------------------------------------------------------
+    # TAREA 2: Realizar Análisis Exploratorio de Datos (EDA)
+    # -----------------------------------------------------------------
+    print("--- INICIO DEL ANÁLISIS EDA ---")
+    
+    # Análisis: Contar cuántas IPS hay por departamento
+    # Usamos la columna 'depa_nombre' que ya confirmamos
+    print("--- Total de IPS por Departamento ---")
+    
+    ips_por_departamento = df.groupBy("depa_nombre") \
+                             .agg(count("*").alias("Total_IPS")) \
+                             .orderBy(desc("Total_IPS"))
+
+    # Mostramos los resultados en la consola
+    ips_por_departamento.show(40, truncate=False) # Mostramos los 40 primeros
+
+    # -----------------------------------------------------------------
+    # TAREA 3: Almacenar los resultados procesados
+    # -----------------------------------------------------------------
+    try:
+        ips_por_departamento.write \
+            .mode("overwrite") \
+            .parquet("resultados_ips/ips_por_departamento.parquet")
+        
+        print("--- Resultados guardados en 'resultados_ips/ips_por_departamento.parquet' ---")
+    
+    except Exception as e:
+        print(f"Error guardando los resultados: {e}")
+
+    spark.stop()
+    print("--- Sesión de Spark detenida ---")
+
+if __name__ == "__main__":
+    main()
